@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='SpatialViewPy',
-      version='0.1.0',
+      version='0.1.1',
       descriptiopn = 'Visualizing multi-sample spatial transcriptimic data using SpatialView',
       py_module='spatialviewpy/prepare_viz',
       package_dir = {'':'src'},
@@ -15,6 +15,7 @@ setup(name='SpatialViewPy',
       long_description = long_description,
       long_description_content_type = "text/markdown",
       install_requires = [
+           "requests >= 2.0.0"
             "numpy >= 1.23.0",
             "pandas >= 2.0.0",
             "scipy >= 1.10",

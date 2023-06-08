@@ -4,7 +4,7 @@ def prepare10x_from_scanpy(adataObj,
                                    export_path,
                                    samples_id_col = "sample_id",
                                    project_name = "spatial",
-                                   clusterCol = "clusters",
+                                   cluster_col = "clusters",
                                    cluster_names = None,
                                    cluster_genes = None,
                                    clust_colors = None,
@@ -25,6 +25,40 @@ def prepare10x_from_scanpy(adataObj,
                                    data_file_name_barcodes = "barcodes.csv",
                                    verbose = False,
                                    config_list = None):
+    """
+    Prepares data from Scanpy object and runs SpatialView.
+
+    Args:
+        adataObj (Scanpy): Scanpy object
+        data_paths (str): directory path to raw data location
+        export_path (str): directory path where the prepared data will be exported or SpatialView will be run
+        samples_id_col (str, optional): Column name in adataObj containing sample names. Defaults to "sample_id".
+        project_name (str, optional): Name of the project. Defaults to "spatial".
+        cluster_col (str, optional): Column name in adataObj containing cluster annotations. Defaults to "clusters".
+        cluster_names (str list, optional): Name of the clustes. If provided must match to the number of clusters. Defaults to None.
+        cluster_genes (str list, optional): list of gene names with ',' separated. Defaults to None.
+        clust_colors (str list, optional): list of hex colors corresponding to clusters. Defaults to None.
+        layer (str, optional): Which later of Scanpy to be used. Defaults to None.
+        multisample_pattern (str, optional): Character suffixed to the barcodes to make unique in case of multiple samples. Defaults to "_".
+        expr_round (int, optional): The expression values are rounded upto. Defaults to 3.
+        spatial_sub_dir (str, optional): subdirectory name where files related to spatial information are stored. Defaults to "spatial".
+        sample_info (dataframe, optional): Metadata information about the samples. Rows corresponding to samples. Defaults to None.
+        download_repo (bool, optional): If True, SpatialView will be downloaded from Github repository. Defaults to True.
+        spatialview_repo (str, optional): SpatialView repo location. Defaults to "https://github.com/kendziorski-lab/spatialview/archive/refs/tags/".
+        spatialview_version (str, optional): Which version to use. Defaults to "spatialview-latest".
+        port (int, optional): Port number to be used by SpatialView. Defaults to 8878.
+        launch_app (bool, optional): If True, then the SpatialView is launched. Defaults to True.
+        export_sparse (bool, optional): Data compression for SpatialView. Defaults to True.
+        data_file_name_expressions (str, optional): (For SpatialView) Name of the expression matrix. Defaults to "expression_matrix.csv".
+        data_file_name_expressions_sparse (str, optional): (For SpatialView) Name of the expression matrix in sparse format. Defaults to "expression_matrix_sparse.txt".
+        data_file_name_genes (str, optional): (For SpatialView) Name of the file containing genes name. Defaults to "genes.csv".
+        data_file_name_barcodes (str, optional): (For SpatialView) Name of the file containing barcodes. Defaults to "barcodes.csv".
+        verbose (bool, optional): Defaults to False.
+        config_list (dictionary, optional): (For SpatialView) Additional configuration values to be passed to SpatialView. Defaults to None.
+
+    Raises:
+        FileNotFoundError: _description_
+    """
     
     import numpy as np
     import pandas as pd
@@ -93,7 +127,7 @@ def prepare10x_from_scanpy(adataObj,
         spatalview_config['data_file_name_expressions_sparse'] = data_file_name_expressions_sparse
         spatalview_config['data_file_name_genes'] = data_file_name_genes
         spatalview_config['data_file_name_barcodes'] = data_file_name_barcodes
-        spatalview_config['data_cluster_column'] = clusterCol
+        spatalview_config['data_cluster_column'] = cluster_col
         
         with open(config_path, 'w') as json_file:
             json.dump(spatalview_config, json_file)
@@ -204,8 +238,8 @@ def prepare10x_from_scanpy(adataObj,
         metadata = adataObj_temp.obs.copy()
         metadata['barcode'] = ["-".join(bc.split(multisample_pattern)[:-1]) for bc in metadata.index]
         
-        if clusterCol in metadata.columns:
-            metadata['cluster'] = metadata[clusterCol]
+        if cluster_col in metadata.columns:
+            metadata['cluster'] = metadata[cluster_col]
         else:
             metadata['cluster'] = 1
             
@@ -253,8 +287,8 @@ def prepare10x_from_scanpy(adataObj,
         #----------
         # creating cluster info
         unique_clusters = 1
-        if clusterCol in adataObj.obs.columns:
-            unique_clusters = adataObj.obs[clusterCol].unique().sort_values()
+        if cluster_col in adataObj.obs.columns:
+            unique_clusters = adataObj.obs[cluster_col].unique().sort_values()
         
         if not clust_colors:
             clust_colors = sns.color_palette("colorblind", len(unique_clusters))
