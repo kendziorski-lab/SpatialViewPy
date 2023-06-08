@@ -3,10 +3,10 @@ from setuptools import setup
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-setup(name = 'SpatialViewPy',
-      version = '0.0.1',
+setup(name='SpatialViewPy',
+      version='0.1.0',
       descriptiopn = 'Visualizing multi-sample spatial transcriptimic data using SpatialView',
-      py_module= 'prepare_viz',
+      py_module='spatialviewpy/prepare_viz',
       package_dir = {'':'src'},
       classifiers=[
           "Programming Language :: Python :: 3.6",
