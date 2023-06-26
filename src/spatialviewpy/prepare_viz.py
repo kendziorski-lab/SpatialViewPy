@@ -308,7 +308,7 @@ def prepare10x_from_scanpy(adataObj,
                               index = False)
             
     if download_repo and launch_app:
-        start_httpserver(path, port = port, verbose = False)
+        start_httpserver(path.join(orign_export_path,project_name), port = port, verbose = False)
         
 
 def start_httpserver(appPath, port = None, verbose = False, launch = True):
