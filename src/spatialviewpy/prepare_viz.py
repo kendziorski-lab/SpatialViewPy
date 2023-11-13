@@ -1,5 +1,5 @@
 
-def prepare10x_from_scanpy(adataObj,
+def prepare10xVisium_from_scanpy(adataObj,
                                    data_paths,
                                    export_path,
                                    samples_id_col = "sample_id",
@@ -7,7 +7,8 @@ def prepare10x_from_scanpy(adataObj,
                                    cluster_col = "clusters",
                                    cluster_names = None,
                                    cluster_genes = None,
-                                   clust_colors = None,
+                                   cluster_colors = None,
+                                   dim_plot = 'umap',
                                    layer = None,
                                    multisample_pattern = "_",
                                    expr_round = 3,
@@ -37,17 +38,33 @@ def prepare10x_from_scanpy(adataObj,
         cluster_col (str, optional): Column name in adataObj containing cluster annotations. Defaults to "clusters".
         cluster_names (str list, optional): Name of the clustes. If provided must match to the number of clusters. Defaults to None.
         cluster_genes (str list, optional): list of gene names with ',' separated. Defaults to None.
-        clust_colors (str list, optional): list of hex colors corresponding to clusters. Defaults to None.
-        layer (str, optional): Which later of Scanpy to be used. Defaults to None.
+        cluster_colors (str list, optional): list of hex colors corresponding to clusters. Defaults to None.
+        dim_plot(str, optional): reduced dimension to be used for cluster visualization. Default to umap.
+        layer (str, optional): Which layer of Scanpy to be used. Defaults to None.
         multisample_pattern (str, optional): Character suffixed to the barcodes to make unique in case of multiple samples. Defaults to "_".
         expr_round (int, optional): The expression values are rounded upto. Defaults to 3.
         spatial_sub_dir (str, optional): subdirectory name where files related to spatial information are stored. Defaults to "spatial".
         sample_info (dataframe, optional): Metadata information about the samples. Rows corresponding to samples. Defaults to None.
-        download_repo (bool, optional): If True, SpatialView will be downloaded from Github repository. Defaults to True.
+        download_repo (bool, optional): If True, SpatialView will be downloaded from Github repository and runs the SpatialView application on a local computer. Defaults to True.
+                                        When TRUE, the updated SpatialView files are downloaded from GitHub (spatialview_repo URL).
+                                        To download the files, SpatialViewR uses the 'wget' utility. The 'wget' package is pre-installed on most Linux distributions.
+                                        For Mac, see https://stackoverflow.com/questions/33886917/how-to-install-wget-in-macos
+                                        
+                                        For Windows, see https://gnuwin32.sourceforge.net/packages/wget.htm
+                                        
+                                        When downloadRepo set to FALSE, SpatialView files may be downloaded manually from the GitHub repository and exportPath to be set to <PATH TO SPATIALVIEW DIR>/data/
+                                        
+                                        For details please refer to the user-guide (https://raw.githubusercontent.com/kendziorski-lab/kendziorski-lab.github.io/main/projects/spatialview/user-guide.pdf)
+                                        
         spatialview_repo (str, optional): SpatialView repo location. Defaults to "https://github.com/kendziorski-lab/spatialview/archive/refs/tags/".
         spatialview_version (str, optional): Which version to use. Defaults to "spatialview-latest".
-        port (int, optional): Port number to be used by SpatialView. Defaults to 8878.
+        port (int, optional): Port number to be used by SpatialView. Defaults to 8878. See more details in 'launch_app' description.
         launch_app (bool, optional): If True, then the SpatialView is launched. Defaults to True.
+        
+                                    Note that the web application is launched in background with in a separate process. Make sure that the port is not already in use. 
+                                    In case port is already in use, then either provide a different port number or kill the existing process that uses the desired port. 
+                                    See the FAQ section in https://github.com/kendziorski-lab/spatialview.
+                                    
         export_sparse (bool, optional): Data compression for SpatialView. Defaults to True.
         data_file_name_expressions (str, optional): (For SpatialView) Name of the expression matrix. Defaults to "expression_matrix.csv".
         data_file_name_expressions_sparse (str, optional): (For SpatialView) Name of the expression matrix in sparse format. Defaults to "expression_matrix_sparse.txt".
@@ -71,6 +88,7 @@ def prepare10x_from_scanpy(adataObj,
     import json
     import gzip
     from os import listdir, path
+    import warnings
     
     orign_export_path = export_path
     samples_ids = adataObj.obs[samples_id_col].unique()
@@ -128,6 +146,7 @@ def prepare10x_from_scanpy(adataObj,
         spatalview_config['data_file_name_genes'] = data_file_name_genes
         spatalview_config['data_file_name_barcodes'] = data_file_name_barcodes
         spatalview_config['data_cluster_column'] = cluster_col
+        spatalview_config['dim_plot'] = dim_plot
         
         with open(config_path, 'w') as json_file:
             json.dump(spatalview_config, json_file)
@@ -166,7 +185,7 @@ def prepare10x_from_scanpy(adataObj,
             dir_name = 'X' + dir_name
         
         if verbose and dir_name != sel_sample:
-            print( f'{dir_name} is created for {sel.sel_sample}')
+            print( f'{dir_name} is created for {sel_sample}')
             
         export_path_sample = path.join(export_path, dir_name)
         os.mkdir(export_path_sample)
@@ -186,18 +205,31 @@ def prepare10x_from_scanpy(adataObj,
         
         shutil.copyfile(sf_json_path, path.join(export_path_sample, "scalefactors_json.json"))
         
-        # 1.b checking tissue_positions_list.csv, this file is a must have one else error
-        tp_csv_path = path.join(data_path, spatial_sub_dir, "tissue_positions_list.csv")
+        # 1.b checking tissue_positions.csv or tissue_positions_list.csv, this file is a must have one else error
+        tp_csv_path = path.join(data_path, spatial_sub_dir, "tissue_positions.csv")
+        tp_list_csv_path = path.join(data_path, spatial_sub_dir, "tissue_positions_list.csv")
         tp_csv_zip_path = path.join(data_path, spatial_sub_dir, "tissue_positions_list.csv.gz")
+        tp_list_csv_zip_path = path.join(data_path, spatial_sub_dir, "tissue_positions_list.csv.gz")
         
-        assert path.exists(tp_csv_path) or path.exists(tp_csv_zip_path), f'tissue_positions_list.csv file not found at {tp_csv_path}'
+        assert path.exists(tp_csv_path) or \
+            path.exists(tp_list_csv_path) or \
+            path.exists(tp_csv_zip_path) or \
+            path.exists(tp_list_csv_zip_path), f'tissue_positions.csv  or tissue_positions_list file not found at {tp_csv_path}.'
         
-        if path.exists(tp_csv_zip_path):
-            with gzip.open(tp_csv_zip_path,'rb') as f_in:
-                with open(tp_csv_path, 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-        
-        shutil.copyfile(tp_csv_path, path.join(export_path_sample, "tissue_positions_list.csv"))
+        if not path.exists(tp_csv_path) and not path.exists(tp_list_csv_path):
+            if path.exists(tp_csv_zip_path):
+                with gzip.open(tp_csv_zip_path,'rb') as f_in:
+                    with open(tp_csv_path, 'wb') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+            elif path.exists(tp_list_csv_zip_path):
+                with gzip.open(tp_list_csv_zip_path,'rb') as f_in:
+                    with open(tp_list_csv_path, 'wb') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+                
+        if path.exists(tp_csv_path):
+            shutil.copyfile(tp_csv_path, path.join(export_path_sample, "tissue_positions.csv"))
+        else:
+            shutil.copyfile(tp_list_csv_path, path.join(export_path_sample, "tissue_positions_list.csv"))
         
         # Step 2
         #--------
@@ -230,7 +262,7 @@ def prepare10x_from_scanpy(adataObj,
                 sample_info_sample.to_csv(path.join(export_path_sample, 'sample_info.csv'), 
                                         index = False, header = None)
             else:
-                raise AssertionError("Number of rows in sample_info is not matching with number of samples")
+                raise AssertionError("Number of rows in sample_info is not matching with number of samples.")
 
         # Step 4
         #---------
@@ -238,14 +270,58 @@ def prepare10x_from_scanpy(adataObj,
         metadata = adataObj_temp.obs.copy()
         metadata['barcode'] = ["-".join(bc.split(multisample_pattern)[:-1]) for bc in metadata.index]
         
+        #adding dim_plot to metadata
+        existing_dims = adataObj_temp.obsm_keys()
+        if dim_plot is not None:
+            matched_dim = [v for v in existing_dims if v.upper().endswith(dim_plot.upper())]
+            if len(matched_dim) == 0 and len(existing_dims) > 0:
+                existing_dim_names = [v.split('_')[-1] for v in existing_dims]
+                warnings.warn(f'{dim_plot}, is not present in the Scanpy object. You may choose from available reductions {existing_dim_names}.')
+                metadata[dim_plot + "_1"] = 0
+                metadata[dim_plot + "_2"] = 0
+            elif len(existing_dims) == 0:
+                warnings.warn(f'Dimentionality reductions not found in the Scanpy object.')
+                metadata[dim_plot + "_1"] = 0
+                metadata[dim_plot + "_2"] = 0
+            elif len(matched_dim) > 0:
+                if len(matched_dim) > 1:
+                    if verbose: warnings.warn(f'Multiple names matched; used first matched dimentionality reduction {matched_dim[0]}.')
+                
+                matched_dim = matched_dim[0]
+                print(matched_dim)
+                reductions_df = adataObj_temp.obsm[matched_dim].copy()
+                print(reductions_df[0:5,:])
+            
+                assert reductions_df.shape[1] >= 2, "\nAtleast 2 reduced dimentions required.\n"
+                if reductions_df.shape[1] > 2: warnings.warn("Only first two reduced dimentions used.")
+            
+                metadata[dim_plot + "_1"] = reductions_df[:,0]
+                metadata[dim_plot + "_2"] = reductions_df[:,1]
+            else:
+                metadata[dim_plot + "_1"] = 0
+                metadata[dim_plot + "_2"] = 0
+        else:
+            metadata["umap_1"] = 0
+            metadata["umap_2"] = 0
+            
+            
+        
         if cluster_col in metadata.columns:
             metadata['cluster'] = metadata[cluster_col]
         else:
             metadata['cluster'] = 1
             
-        spot_info = pd.read_csv(path.join(data_path, spatial_sub_dir,
-                                          "tissue_positions_list.csv"),
-                                header = None)        
+        spot_info = None
+        if path.exists(path.join(data_path, spatial_sub_dir,
+                                            "tissue_positions.csv")):
+            spot_info = pd.read_csv(path.join(data_path, spatial_sub_dir,
+                                            "tissue_positions.csv"),
+                                    header = None)
+        else:
+            spot_info = pd.read_csv(path.join(data_path, spatial_sub_dir,
+                                            "tissue_positions_list.csv"),
+                                    header = None)
+                  
         spot_info.columns = ["barcode", "in_tissue", "array_row", 
                               "array_col", "pxl_row_in_fullres", "pxl_col_in_fullres"]  
         
@@ -290,9 +366,9 @@ def prepare10x_from_scanpy(adataObj,
         if cluster_col in adataObj.obs.columns:
             unique_clusters = adataObj.obs[cluster_col].unique().sort_values()
         
-        if not clust_colors:
-            clust_colors = sns.color_palette("colorblind", len(unique_clusters))
-            clust_colors = clust_colors.as_hex()
+        if not cluster_colors:
+            cluster_colors = sns.color_palette("colorblind", len(unique_clusters))
+            cluster_colors = cluster_colors.as_hex()
         
         if not cluster_names:
             cluster_names = unique_clusters
@@ -301,7 +377,7 @@ def prepare10x_from_scanpy(adataObj,
             cluster_genes = ['undefined'] * len(unique_clusters)
             
         clusterInfo_df = pd.DataFrame({'cluster' : unique_clusters,
-                                        'color' : clust_colors,
+                                        'color' : cluster_colors,
                                         'name' : cluster_names, 
                                         'genes' : cluster_genes})
         clusterInfo_df.to_csv(path.join(export_path_sample, 'cluster_info.csv'),
@@ -317,7 +393,7 @@ def start_httpserver(appPath, port = None, verbose = False, launch = True):
     
     server = None
     http_port = 8000
-    if not port:
+    if port is not None:
         http_port = port
     try:
         server = Popen(['python', '-m', 'http.server', '--directory', appPath, str(http_port)])
