@@ -288,9 +288,7 @@ def prepare10xVisium_from_scanpy(adataObj,
                     if verbose: warnings.warn(f'Multiple names matched; used first matched dimentionality reduction {matched_dim[0]}.')
                 
                 matched_dim = matched_dim[0]
-                print(matched_dim)
                 reductions_df = adataObj_temp.obsm[matched_dim].copy()
-                print(reductions_df[0:5,:])
             
                 assert reductions_df.shape[1] >= 2, "\nAtleast 2 reduced dimentions required.\n"
                 if reductions_df.shape[1] > 2: warnings.warn("Only first two reduced dimentions used.")
