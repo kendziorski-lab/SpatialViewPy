@@ -14,7 +14,7 @@ pip install spatialviewpy
 
 SpatialViewPy prepares data and runs SpatialView from ScanPy objects.
 
-Please check the [step by step tutorial](https://github.com/kendziorski-lab/SpatialViewPy/blob/main/notebooks/tutorial.ipynb).
+Please check the [step by step tutorial](https://github.com/kendziorski-lab/SpatialViewPy/blob/main/notebooks/tutorial.ipynb)
 
 **[Demo Application - Cancer micro environment](https://www.biostat.wisc.edu/~kendzior/spatialviewdemo/)**
 
